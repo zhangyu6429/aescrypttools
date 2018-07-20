@@ -1,4 +1,5 @@
 
+
 package com.zhy.aestools;
 
 import android.content.Context;
@@ -42,8 +43,7 @@ public class AESCryptTools {
      */
     private byte[] mSecretKeyBytes;
 
-    private AESCryptTools(Context context, String password, String aesSharedPreferencesFileName)
-            throws NoSuchAlgorithmException, InvalidKeySpecException, RuntimeException {
+    public AESCryptTools(Context context, String password, String aesSharedPreferencesFileName) {
 
         mContext = context;
         mAesSharedPreferencesFileName = aesSharedPreferencesFileName;
@@ -162,32 +162,36 @@ public class AESCryptTools {
      * @throws NoSuchAlgorithmException
      * @throws InvalidKeySpecException
      */
-    private byte[] getSecretKeyBytes(String password) throws NoSuchAlgorithmException, InvalidKeySpecException {
+    private byte[] getSecretKeyBytes(String password){
+        byte[] keyBytes = null;
+        try {
+            int saltLen = 64;
+            int keyLen = 256;
+            int iterationCount = 20;
 
-        int saltLen = 64;
-        int keyLen = 256;
-        int iterationCount = 20;
+            byte[] salt = null;
 
-        byte[] salt = null;
+            SharedPreferences sp = mContext.getSharedPreferences(mAesSharedPreferencesFileName, Context.MODE_PRIVATE);
+            String saltSpKey = "salt_" + getMD5(encodeBase64(password.getBytes()).getBytes());
 
-        SharedPreferences sp = mContext.getSharedPreferences(mAesSharedPreferencesFileName, Context.MODE_PRIVATE);
-        String saltSpKey = "salt_" + getMD5(encodeBase64(password.getBytes()).getBytes());
+            String saltStr = sp.getString(saltSpKey, "");
+            if (!TextUtils.isEmpty(saltStr)) {
+                salt = decodeBase64ToBytes(saltStr);
+            }
 
-        String saltStr = sp.getString(saltSpKey, "");
-        if (!TextUtils.isEmpty(saltStr)) {
-            salt = decodeBase64ToBytes(saltStr);
+            if (salt == null || salt.length != saltLen) {
+                salt = new byte[saltLen];
+                SecureRandom random = new SecureRandom();
+                random.nextBytes(salt);
+                sp.edit().putString(saltSpKey, encodeBase64(salt));
+            }
+
+            KeySpec keySpec = new PBEKeySpec(password.toCharArray(), salt, iterationCount, keyLen);
+            SecretKeyFactory keyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
+            keyBytes = keyFactory.generateSecret(keySpec).getEncoded();
+        } catch (Exception e) {
+
         }
-
-        if (salt == null || salt.length != saltLen) {
-            salt = new byte[saltLen];
-            SecureRandom random = new SecureRandom();
-            random.nextBytes(salt);
-            sp.edit().putString(saltSpKey, encodeBase64(salt));
-        }
-
-        KeySpec keySpec = new PBEKeySpec(password.toCharArray(), salt, iterationCount, keyLen);
-        SecretKeyFactory keyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
-        byte[] keyBytes = keyFactory.generateSecret(keySpec).getEncoded();
 
         return keyBytes;
     }
