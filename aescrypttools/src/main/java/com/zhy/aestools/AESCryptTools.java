@@ -183,7 +183,7 @@ public class AESCryptTools {
                 salt = new byte[saltLen];
                 SecureRandom random = new SecureRandom();
                 random.nextBytes(salt);
-                sp.edit().putString(saltSpKey, encodeBase64(salt));
+                sp.edit().putString(saltSpKey, encodeBase64(salt)).commit();
             }
 
             KeySpec keySpec = new PBEKeySpec(password.toCharArray(), salt, iterationCount, keyLen);
